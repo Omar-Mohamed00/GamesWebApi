@@ -25,50 +25,80 @@ namespace GamesWebApi.Controllers
         [HttpGet]
         public  IActionResult Get()
         {
-            var games = _gamesServices.GetAll().ToList();
-            if (games is null)
-                return NotFound();
-            return Ok(games);
+            try
+            {
+                var games = _gamesServices.GetAll().ToList();
+                if (games is null)
+                    return NotFound();
+                return Ok(games);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500,ex.Message);
+            }
         }
         [HttpGet("{id}")]
-        public IActionResult Get(int id)
+        public Task< IActionResult> Get(int id)
         {
-            var game = _gamesServices.GetById(id);
-            if (game is null)
-                return NotFound();
-            return Ok(game);
+            try
+            {
+                var game = _gamesServices.GetById(id);
+                if (game is null)
+                    return Task.FromResult<IActionResult>(NotFound());
+                return Task.FromResult<IActionResult>(Ok(game));
+            }
+            catch(Exception ex)
+            {
+                return Task.FromResult<IActionResult>(BadRequest("An error occurred while processing your request."));
+            }
         }
 
         [HttpPost]
         public async Task<IActionResult> Create(CreateGameFormViewModel model)
         {
-            if (!ModelState.IsValid)
+            try
             {
-                model.Categories = _categoriesServices.GetSelectList().Cast<SelectListItem>().ToList();
-                model.Devices = _deviceServices.GetSelectList().Cast<SelectListItem>().ToList();
-                return NotFound(model);
+                if (!ModelState.IsValid)
+                {
+                    model.Categories = _categoriesServices.GetSelectList().Cast<SelectListItem>().ToList();
+                    model.Devices = _deviceServices.GetSelectList().Cast<SelectListItem>().ToList();
+                    return NotFound(model);
+                }
+
+                await _gamesServices.Create(model);
+
+                return Created("",model);
             }
+            catch (Exception ex)
+            {
+                return StatusCode(500,ex.Message);
+            } 
 
-            await _gamesServices.Create(model);
-
-            return Ok(model);
+            
         }
 
         [HttpPut]
         public async Task<IActionResult> Edit(EditGameFormViewModel model)
         {
-            if (!ModelState.IsValid)
+            try
             {
-                model.Categories = _categoriesServices.GetSelectList().Cast<SelectListItem>().ToList();
-                model.Devices = _deviceServices.GetSelectList().Cast<SelectListItem>().ToList();
-                return BadRequest();
+                if (!ModelState.IsValid)
+                {
+                    model.Categories = _categoriesServices.GetSelectList().Cast<SelectListItem>().ToList();
+                    model.Devices = _deviceServices.GetSelectList().Cast<SelectListItem>().ToList();
+                    return BadRequest();
+                }
+
+                var game = await _gamesServices.Update(model);
+                if (game is null)
+                    return BadRequest();
+
+                return NoContent();
             }
-
-            var game = await _gamesServices.Update(model);
-            if (game is null)
-                return NotFound();
-
-            return Ok(game);
+            catch (Exception ex) 
+            { 
+                return NotFound(ex.Message);
+            }
         }
         [HttpDelete]
         public IActionResult Delete(int id)
